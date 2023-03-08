@@ -437,5 +437,48 @@ FROM konyvtar.szerzo sz LEFT OUTER JOIN konyvtar.konyvszerzo ksz
     HAVING sum(honorarium) < 10000
     ORDER BY sum(honorarium) desc;
     
+/* Az egyes szerzõk hány különbözõ témában írtak könyvet (ha null is) */
+-- count(distinct tema)
+SELECT vezeteknev, keresztnev, count(distinct tema) 
+FROM konyvtar.szerzo sz LEFT OUTER JOIN konyvtar.konyvszerzo ksz
+    ON sz.szerzo_azon = ksz.szerzo_azon
+        LEFT OUTER JOIN konyvtar.konyv ko
+            ON ksz.konyv_azon = ko.konyv_azon
+    GROUP BY sz.szerzo_azon, vezeteknev, keresztnev
+    ORDER BY count(distinct tema) desc;
+    
+/* Hány könyv tartozik ahhoz a témához, amelyhez a legtöbb könyv tartozik */
+SELECT tema, count(*)
+FROM konyvtari_konyv
+GROUP by tema;
 
+/* Kik azok a szerzõk, akik nevében *pontosan* 2 'a' betû szerepel, 
+mindegy hogy kicsi, vagy nagy */
+SELECT vezeteknev  ||' '|| keresztnev FROM konyvtar.szerzo
+    WHERE lower(vezeteknev  ||' '|| keresztnev) like '%a%a%' AND 
+    lower(vezeteknev  ||' '|| keresztnev) not like '%a%a%a%';
+    
+/* Ki Pat Fay fõnöke? */
+SELECT fonok.first_name, fonok.last_name FROM hr. employees pf INNER JOIN hr.employees fonok
+    on pf.manager_id = fonok.employee_id
+WHERE pf.first_name = 'Pat' AND pf.last_name = 'Fay';
+
+/* Melyek azok a példányok, melyek értéke több, mint a hozzájuk tartozó könyv árának a 99%-a */
+SELECT ko.konyv_azon, ko.cim, ertek FROM konyvtar.konyvtari_konyv kko INNER JOIN konyvtar.konyv ko
+    ON ko.konyv_azon = kko.konyv_azon
+    WHERE ertek > ar*0.99
+    GROUP BY ko.cim, ko.konyv_azon, ertek
+    ORDER BY ertek desc;
+    
+/* Listázza ki az Agatha Christie-tõl idõsebb szerzõket */
+SELECT * FROM konyvtar.szerzo
+    WHERE to_char(szuletesti_datum, 'yyyy.mm.dd'); --?
+    
+SELECT * FROM konyvtar.szerzo ach INNER JOIN konyvtar.szerzo sz
+    ON ach.szuletesi_datum > sz.szuletesi_datum
+WHERE sz.vezeteknev = 'Christie' AND sz.keresztnev = 'Agatha';
+
+
+    
+    
     
