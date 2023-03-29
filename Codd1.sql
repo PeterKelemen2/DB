@@ -699,27 +699,144 @@ FROM szerelo.sz_auto au
 INNER JOIN szerelo.sz_szereles sz
 ON au.azon = sz.auto_azon
 GROUP BY auto_azon
-HAVING elso_vasarlasi_ar > sum(munkavegzes_ara)*0.9
-    
+HAVING elso_vasarlasi_ar > sum(munkavegzes_ara)*0.9;
 
 
+-- ZH gyakorlás:
+/* Listázza azokat az autókat, melyeknek az elsõ vásárlási
+ár 2M és 5M közé esik ÉS a színe piros/fekete/kék
+A lista legyen szín, azon belül ár szerint csökkenõen rendezett */
+
+SELECT rendszam, azon, szin, elso_vasarlasi_ar FROM szerelo.sz_auto
+WHERE elso_vasarlasi_ar > 2000000 AND
+    elso_vasarlasi_ar < 5000000 AND 
+    szin in ('piros', 'fekete', 'kék')
+ORDER BY szin, elso_vasarlasi_ar desc;
+
+SELECT rendszam, azon, szin, elso_vasarlasi_ar FROM szerelo.sz_auto
+WHERE elso_vasarlasi_ar between 2000000 and 5000000 and
+    szin in ('piros', 'fekete', 'kék')
+ORDER BY szin, elso_vasarlasi_ar desc;
+
+/* Listázza azokat az autókat amelyeket elõsször 2010 és 2020
+között adtak el 
+A lista legyen év, azon belül ár szerint rendezett*/
+SELECT to_char(elso_vasarlas_idopontja, 'yyyy.mm.dd hh24:mi:ss') 
+FROM szerelo.sz_auto
+WHERE extract (year from elso_vasarlas_idopontja) 
+    between 2010 and 2020;
+-- stb
+
+/* Melyek azok a tulajdonosok akiknek 3-nál több autója van
+A tulajdonosnak az azonosjtóját listázzuk
+A lista legyen darabszám szerint csökkenõen rendezett*/
+SELECT tulaj_azon, count(auto_azon) db FROM szerelo.sz_auto_tulajdonosa
+GROUP BY tulaj_azon
+HAVING count(auto_azon) > 3
+ORDER BY db desc;
+
+-- névvel:
+SELECT t.nev, tulaj_azon, count(auto_azon) db FROM szerelo.sz_auto_tulajdonosa at
+INNER JOIN szerelo.sz_tulajdonos t
+    ON at.tulaj_azon = t.azon
+GROUP BY tulaj_azon, t.nev
+HAVING count(auto_azon) > 3
+ORDER BY db desc;
+
+/* Melyek azok a tulajdonosok akiknek 3-nál kevesebb autója van */
+SELECT t.nev, tulaj_azon, count(auto_azon) db FROM szerelo.sz_auto_tulajdonosa at
+RIGHT OUTER JOIN szerelo.sz_tulajdonos t
+    ON at.tulaj_azon = t.azon
+GROUP BY tulaj_azon, t.nev
+HAVING count(auto_azon) < 3
+ORDER BY db desc;
+    
+/* Melyek azok az autók melyek átlagok felértékelési ára több
+mint 1M 
+A lista legyen rendszám szerint rendezett*/
+SELECT rendszam, avg(ertek) FROM szerelo.sz_autofelertekeles aufe
+RIGHT OUTER JOIN szerelo.sz_auto au
+    ON aufe.auto_azon = au.azon
+GROUP BY au.azon, rendszam
+HAVING avg(ertek) > 1000000
+ORDER BY rendszam;
+
+/* Listázza azon tulajdonosokat, amelyben Debreceni tulaj
+piros/kék/fekete színû autót 2010 január 1 után vásárolt
+A lista legyen tulajnév, azon belül rendszám szerint rendezett */
+SELECT t.nev, au.rendszam, au.szin, at.vasarlas_ideje FROM szerelo.sz_auto_tulajdonosa at LEFT OUTER JOIN
+    szerelo.sz_auto au
+    ON at.auto_azon = au.azon
+        INNER JOIN szerelo.sz_tulajdonos t
+        ON at.tulaj_azon = t.azon
+WHERE cim like 'Debrecen,%' 
+AND szin in ('piros', 'kék', 'fekete')
+AND to_char(vasarlas_ideje, 'yyyy.mm.dd hh24:mi:ss') >
+to_char('2010.01.01 00:00:00')
+ORDER BY t.nev, rendszam;
+
+-- to_date:
+SELECT t.nev, au.rendszam, au.szin, at.vasarlas_ideje FROM szerelo.sz_auto_tulajdonosa at LEFT OUTER JOIN
+    szerelo.sz_auto au
+    ON at.auto_azon = au.azon
+        INNER JOIN szerelo.sz_tulajdonos t
+        ON at.tulaj_azon = t.azon
+WHERE cim like 'Debrecen,%' 
+AND szin in ('piros', 'kék', 'fekete')
+AND at.vasarlas_ideje > to_date('2010.01.01', 'yyyy.mm.dd')
+ORDER BY t.nev, rendszam;
+
+/* Melyek azok az autók melyek ára több mint a piros autók
+átlag ára*/
+SELECT * FROM szerelo.sz_auto
+WHERE elso_vasarlasi_ar > (SELECT avg(elso_vasarlasi_ar)
+                           FROM szerelo.sz_auto
+                           WHERE szin = 'piros'
+                            );
+
+/* Melyik autót szerelték a leghosszabb ideig
+Ha a szerelés nem fejezték be, akkor az aktuális idõt 
+használja */
+SELECT rendszam, nvl(szereles_vege, sysdate)-szereles_kezdete ido
+-- NV - ha van null, akkor használja a sysdate-et
+FROM szerelo.sz_auto au INNER JOIN szerelo.sz_szereles sz
+ON au.azon = sz.auto_azon
+ORDER BY ido desc
+FETCH FIRST ROW WITH TIES;
+
+/* Hány piros autó van */
+SELECT count(azon) FROM szerelo.sz_auto
+WHERE szin = 'piros';
+
+/* melyik autót nem szerelték */
+SELECT * FROM szerelo.sz_auto
+WHERE azon not in(
+        SELECT auto_azon FROM szerelo.sz_szereles
+    );
+
+/* Márkánként mennyi az átlagos szerelési ár*/
+SELECT marka, AVG(munkavegzes_ara) FROM szerelo.sz_autotipus atip
+LEFT OUTER JOIN szerelo.sz_auto au
+    ON atip.azon = au.azon
+        LEFT OUTER JOIN szerelo.sz_szereles sz
+        ON au.azon = sz.auto_azon
+GROUP BY marka;
+
+SELECT am.nev marka, avg(munkavegzes_ara) FROM szerelo.sz_automarka am LEFT OUTER JOIN
+    szerelo.sz_autotipus at 
+    ON am.nev = at.marka
+        FULL OUTER JOIN szerelo.sz_auto au
+        ON at.azon = au.tipus_azon
+            FULL OUTER JOIN szerelo.sz_szereles sz
+            ON au.azon = sz.auto_azon
+GROUP BY am.nev;
+
+/* Az egyes autók utolsó eladási ideje */
+SELECT auto_azon, rendszam, to_char(max(vasarlas_ideje), 'yyyy.mm.dd') ido 
+FROM szerelo.sz_auto au
+right OUTER JOIN szerelo.sz_auto_tulajdonosa at
+ON au.azon = at.auto_azon
+GROUP BY auto_azon, rendszam
+ORDER BY max(vasarlas_ideje) desc;
 
 
-
-
-
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
