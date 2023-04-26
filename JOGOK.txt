@@ -1,0 +1,39 @@
+-- jogok:
+-- GRANT <jog> TO <user>
+-- GRANT select on konyv TO user1, user2, public
+
+/*
+	tábla jog: 
+SELECT ON
+INSERT ON
+UPDATE ON
+DELETE ON
+ALL ON
+INSERT (CIM) ON konyv
+(REFERENCES)
+
+==================
+
+	objektum jog:
+CREATE TABLE
+ALTER TABLE
+
+CREATE USER
+ALTER USER
+
+CREATE NEW
+
+==================
+
+	szerepkör:
+ROLE
+
+RESOURCE
+    CREATE TABLE
+    CREATE PROCEDURE
+
+CONNECT
+    CREATE SESSION
+    
+DBA - mindenhez van joga
+*/
