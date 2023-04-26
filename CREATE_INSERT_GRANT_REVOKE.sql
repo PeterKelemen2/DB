@@ -370,8 +370,8 @@ SELECT * FROM szerelo.sz_auto au LEFT OUTER JOIN
 SELECT * FROM szerelo.sz_autofelertekeles
 WHERE (auto_azon, datum) IN ( SELECT auto_azon, max(datum) 
                               FROM szerelo.sz_autofelertekeles
-                              GROUP BY auto_azon) bs
-)
+                              GROUP BY auto_azon) 
+) bs
 ON au.azon = bs.auto_azon;
 
         
